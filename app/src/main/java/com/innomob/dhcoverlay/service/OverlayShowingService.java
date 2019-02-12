@@ -1,11 +1,16 @@
-package com.innomob.dhcoverlay;
+package com.innomob.dhcoverlay.service;
 
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
+import android.graphics.PorterDuff;
+import android.graphics.drawable.Drawable;
 import android.os.IBinder;
+import android.support.annotation.ColorRes;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.graphics.drawable.DrawableCompat;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,14 +19,17 @@ import android.view.View.OnTouchListener;
 import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.Toast;
+import com.innomob.dhcoverlay.R;
 
 public class OverlayShowingService extends Service implements OnTouchListener, OnClickListener {
 
     private View topLeftView;
 
+    private Drawable xDrawable;
     private Button overlayedButton;
-    private Button xButton;
+    private ImageView xView;
     private float offsetX;
     private float offsetY;
     private int originalXPos;
@@ -62,14 +70,15 @@ public class OverlayShowingService extends Service implements OnTouchListener, O
         topLeftParams.height = 0;
         wm.addView(topLeftView, topLeftParams);
 
-        xButton = new Button(this);
-        xButton.setText("X");
-        xButton.setBackgroundColor(Color.BLACK);
-        xButton.setVisibility(View.INVISIBLE);
+        xView = new ImageView(this);
+        xView.setVisibility(View.INVISIBLE);
+        xDrawable = ContextCompat.getDrawable(this, R.drawable.ic_x_symbol);
+        xView.setImageDrawable(paintDrawable(xDrawable, R.color.colorBlack));
 
         WindowManager.LayoutParams paramsX = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT, LayoutParams.TYPE_APPLICATION_OVERLAY, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL, PixelFormat.TRANSLUCENT);
         paramsX.gravity = Gravity.CENTER_HORIZONTAL | Gravity.TOP;
-        wm.addView(xButton, paramsX);
+        paramsX.y = 100;
+        wm.addView(xView, paramsX);
 
     }
 
@@ -79,17 +88,18 @@ public class OverlayShowingService extends Service implements OnTouchListener, O
         if (overlayedButton != null) {
             wm.removeView(overlayedButton);
             wm.removeView(topLeftView);
-            wm.removeView(xButton);
+            wm.removeView(xView);
             overlayedButton = null;
             topLeftView = null;
-            xButton = null;
+            xView = null;
         }
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
 
-        xButton.setVisibility(View.VISIBLE);
+        xView.setVisibility(View.VISIBLE);
+        xView.setImageDrawable(paintDrawable(xDrawable, R.color.colorBlack));
 
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             float x = event.getRawX();
@@ -110,9 +120,6 @@ public class OverlayShowingService extends Service implements OnTouchListener, O
             int[] topLeftLocationOnScreen = new int[2];
             topLeftView.getLocationOnScreen(topLeftLocationOnScreen);
 
-            System.out.println("topLeftY="+topLeftLocationOnScreen[1]);
-            System.out.println("originalY="+originalYPos);
-
             float x = event.getRawX();
             float y = event.getRawY();
 
@@ -128,21 +135,22 @@ public class OverlayShowingService extends Service implements OnTouchListener, O
             params.x = newX - (topLeftLocationOnScreen[0]);
             params.y = newY - (topLeftLocationOnScreen[1]);
 
+            if (hoverOverView(event, xView)) {
+                xView.setImageDrawable(paintDrawable(xDrawable, R.color.colorRed));
+                System.out.println("Change red");
+            } else {
+                xView.setImageDrawable(paintDrawable(xDrawable, R.color.colorBlack));
+            }
+
             wm.updateViewLayout(overlayedButton, params);
             moving = true;
         } else if (event.getAction() == MotionEvent.ACTION_UP) {
             if (moving) {
-                float touchX = event.getRawX();
-                float touchY = event.getRawY();
 
-                int[] posXButton = new int[2];
-                xButton.getLocationOnScreen(posXButton);
-
-                if(touchX >= posXButton[0] && touchX <= posXButton[0] + xButton.getWidth() &&
-                        touchY >= posXButton[1] && touchY <= posXButton[1] + xButton.getHeight()) {
+                if (hoverOverView(event, xView)) {
                     this.stopSelf();
                 } else {
-                    xButton.setVisibility(View.INVISIBLE);
+                    xView.setVisibility(View.INVISIBLE);
                 }
 
                 return true;
@@ -155,6 +163,24 @@ public class OverlayShowingService extends Service implements OnTouchListener, O
     @Override
     public void onClick(View v) {
         Toast.makeText(this, "Overlay button click event", Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean hoverOverView(MotionEvent event, View v) {
+        int offset = 100;
+        float x = event.getRawX();
+        float y = event.getRawY();
+        int[] posView = new int[2];
+        v.getLocationOnScreen(posView);
+        return x + offset >= posView[0] && x <= posView[0] + xView.getWidth() + offset &&
+                y + offset >= posView[1] && y <= posView[1] + xView.getHeight() + offset;
+    }
+
+    private Drawable paintDrawable(Drawable drawable, @ColorRes int color) {
+        Drawable mWrappedDrawable = drawable.mutate();
+        mWrappedDrawable = DrawableCompat.wrap(mWrappedDrawable);
+        DrawableCompat.setTint(mWrappedDrawable, getResources().getColor(color, null));
+        DrawableCompat.setTintMode(mWrappedDrawable, PorterDuff.Mode.SRC_IN);
+        return mWrappedDrawable;
     }
 
 }

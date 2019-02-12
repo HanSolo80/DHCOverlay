@@ -2,10 +2,9 @@ package com.innomob.dhcoverlay;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Toast;
+import com.innomob.dhcoverlay.service.OverlayShowingService;
 
 public class MainActivity extends Activity {
 
@@ -17,16 +16,7 @@ public class MainActivity extends Activity {
 
 
     public void clickedButton(View v) {
-//        Runnable task2 = () -> {
-//            Intent svc = new Intent(this, OverlayShowingService.class);
-//            startService(svc);
-//        };
-//
-//        new Thread(task2).start();
-
         Intent svc = new Intent(this, OverlayShowingService.class);
         startService(svc);
-
-        //Toast.makeText(this, "Activity button click event", Toast.LENGTH_SHORT).show();
     }
 }
